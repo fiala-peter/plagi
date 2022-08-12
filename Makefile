@@ -1,14 +1,10 @@
-CXX=gcc
+CC=gcc
 CFLAGS=-Wall -pedantic -g
-LFLAGS=-lparse_json -lm
+LDLIBS=-lparse_json -lm
 
-all: split_json.out split_json_moodle.out split_json_noid.out ip_match.out graph.out partition.out
+all: split_json split_json_moodle split_json_noid ip_match graph partition
 
-%.out: %.o
-	$(CXX) -o $@ $^ $(LFLAGS)
-
-%.o: %.c
-	$(CXX) -c $(CFLAGS) $^ -o $@
+%: %.o
 
 clean:
-	rm *.out *.o
+	rm split_json split_json_moodle split_json_noid ip_match graph partition
