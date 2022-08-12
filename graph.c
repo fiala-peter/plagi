@@ -1,20 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 
-int strmod(char *str)
+void trim_extension(char *str)
 {
 	char *b = strstr(str, ".c");
 	if (b != NULL)
 		*b = '\0';
-	b = strchr(str, '.');
-	if (b != NULL)
-	{
-		*b = *(b + 1);
-		*(b + 1) = '\0';
-	}
-	int a;
-	sscanf(str, "%d", &a);
-	return a;
 }
 
 int main(int argc, char *argv[])
@@ -47,13 +38,8 @@ int main(int argc, char *argv[])
 		char *color;
 		int percent;
 		int cnt = sscanf(linebuf, "%s consists for %d %% of %s material", from, &percent, to);
-		// int ifrom = strmod(from);
-		// int ito = strmod(to);
-		// if (percent > 50)
-		// {
-		// 	list[ifrom]++;
-		// 	list[ito]++;
-		// }
+		trim_extension(from);
+		trim_extension(to);
 		if (percent > 70)
 			color = "red";
 		else if (percent > 50)
@@ -68,12 +54,6 @@ int main(int argc, char *argv[])
 
 	fclose(fin);
 	fclose(fout);
-
-	// fout = fopen(argv[3], "w");
-	// for (int i = 0; i < 1000; i++)
-	// 	if (list[i] != 0)
-	// 		fprintf(fout, "%d\n", i);
-	// fclose(fout);
 
 	return 0;
 }

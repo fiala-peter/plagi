@@ -76,8 +76,7 @@ int color(void)
 
 void sort_files(char *sol_name, int num_colors)
 {
-	char from_path[200];
-	sprintf(from_path, "./solutions/%s", sol_name);
+	char *from_path = "./";
 
 	for (int c = 1; c <= num_colors; c++)
 	{
