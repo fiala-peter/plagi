@@ -4,9 +4,9 @@
  * @brief Split json encoded solution file into separate c files
  * @version 0.1
  * @date 2020-11-14
- * 
+ *
  * @copyright Copyright (c) 2020
- * 
+ *
  */
 
 #include <ctype.h>
@@ -19,6 +19,11 @@
 #define JSON_TOOLS_DEFINITIONS
 #include "json_tools.h"
 
+// if this macro is defined then the C files are named using prog1_ids instead of neptun codes
+// #define CONVERT_NEPTUN_TO_PROGID
+
+#ifdef CONVERT_NEPTUN_TO_PROGID
+
 /**
  * @brief structure containing neptun code and prog1id pairs
  */
@@ -30,7 +35,7 @@ typedef struct
 
 /**
  * @brief Read neptun-prog1id pairs from file
- * 
+ *
  * @param fname the file name
  * @param n[out] number of elements read
  * @return student_id_t* array of elements
@@ -55,11 +60,11 @@ student_id_t *read_ids(char *fname, size_t *n)
 
 /**
  * @brief Convert Neptun code to prog1 id
- * 
+ *
  * @param neptun the neptun code (null-terminated)
  * @param ids array of code-id pairs
  * @param n number of array elements
- * @return double prog1_id. 0.0 is returned if not found 
+ * @return double prog1_id. 0.0 is returned if not found
  */
 double neptun2id(char const *neptun, student_id_t ids[], size_t n)
 {
@@ -69,45 +74,52 @@ double neptun2id(char const *neptun, student_id_t ids[], size_t n)
 	return 0.0;
 }
 
-enum
-{
-	BUFSIZE = 4096
-};
+#endif
 
 /**
- * @brief 
- * 
- * @param st json syntax tree 
+ * @brief parse the json file and split it into separate C solutions
+ *
+ * @param st json syntax tree
  * @param ids array containing neptun and prog1id pairs
  * @param nids size of array
  */
+#ifdef CONVERT_NEPTUN_TO_PROGID
 void parse_and_split(syntax_tree st, student_id_t ids[], size_t nids)
+#else
+void parse_and_split(syntax_tree st)
+#endif
 {
 	// traverese tree children
 	for (syntax_tree *it = syntax_tree_first_child(st); it != NULL; it = syntax_tree_next_sibling(it))
 	{
-		syntax_tree c = *it;
-
-		if (syntax_tree_get_field(c, "accepted")->type != syntax_true)
+		/*
+		// only accepted solutions are considered
+		if (syntax_tree_get_field(*it, "accepted")->type != syntax_true)
 			continue;
+		*/
 
-		char const *student_id = syntax_tree_get_field(c, "student_id")->data;
-		char const *time = syntax_tree_get_field(c, "time")->data;
-		char const *solution = syntax_tree_get_field(c, "solution")->data;
+		char const *student_id = syntax_tree_get_field(*it, "student_id")->data;
+		char const *time = syntax_tree_get_field(*it, "time")->data;
+		char const *solution = syntax_tree_get_field(*it, "solution")->data;
 
+		char fname[10], identifier[8];
+#ifdef CONVERT_NEPTUN_TO_PROGID
 		double prog1id = neptun2id(student_id, ids, nids);
 		if (prog1id == 0.0)
 			continue;
+		sprintf(identifier, "%02.1f", prog1id);
+#else
+		sprintf(identifier, "%s", student_id);
+#endif
+		sprintf(fname, "%s.c", identifier);
 
-		char fname[10];
-		sprintf(fname, "%02.1f.c", prog1id);
 		FILE *fout = fopen(fname, "w");
 		if (fout == NULL)
 		{
 			fprintf(stderr, "Could not create file %s\n", fname);
 			continue;
 		}
-		fprintf(fout, "// Solution submitted by %02.1f at %s\n", prog1id, time);
+		fprintf(fout, "// Solution submitted by %s at %s\n", identifier, time);
 		char const *content = solution;
 		while (*content != '\0')
 		{
@@ -127,19 +139,26 @@ void parse_and_split(syntax_tree st, student_id_t ids[], size_t nids)
 
 int main(int argc, char *argv[])
 {
-	char *fname, *dbname;
+#ifdef CONVERT_NEPTUN_TO_PROGID
 	if (argc < 3)
 	{
 		fprintf(stderr, "Did not provide enough arguments\n");
 		printf("Usage: %s json_fname prog1idname\n", argv[0]);
 		return 1;
 	}
-	else
+	char *fname = argv[1];
+	char *dbname = argv[2];
+#else
+	if (argc < 2)
 	{
-		fname = argv[1];
-		dbname = argv[2];
+		fprintf(stderr, "Did not provide enough arguments\n");
+		printf("Usage: %s json_fname\n", argv[0]);
+		return 1;
 	}
+	char *fname = argv[1];
+#endif
 
+	// parse json into syntax tree in two steps: (1) token list (2) syntax tree
 	FILE *fin = fopen(fname, "r");
 	if (fin == NULL)
 	{
@@ -148,19 +167,23 @@ int main(int argc, char *argv[])
 	}
 	token_list tl = token_list_read_from_file(fin);
 	fclose(fin);
-	
 	token_list end;
 	syntax_tree st = parse_json(tl, &end);
 	token_list_delete(tl);
 
+#ifdef CONVERT_NEPTUN_TO_PROGID
 	// read neptun-prog1id-pairs
 	size_t nids;
 	student_id_t *ids = read_ids(dbname, &nids);
-
+	// split the syntax tree into separate C files
 	parse_and_split(st, ids, nids);
 	syntax_tree_delete(st);
-
 	free(ids);
+#else
+	// split the syntax tree into separate C files
+	parse_and_split(st);
+	syntax_tree_delete(st);
+#endif
 
 	return 0;
 }
