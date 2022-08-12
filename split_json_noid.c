@@ -20,80 +20,28 @@
 #include "json_tools.h"
 
 /**
- * @brief structure containing neptun code and prog1id pairs
- */
-typedef struct
-{
-	char neptun[6 + 1];
-	double id;
-} student_id_t;
-
-/**
- * @brief Read neptun-prog1id pairs from file
- * 
- * @param fname the file name
- * @param n[out] number of elements read
- * @return student_id_t* array of elements
- */
-student_id_t *read_ids(char *fname, size_t *n)
-{
-	FILE *f = fopen(fname, "r");
-	if (f == NULL)
-	{
-		fprintf(stderr, "Could not open file %s for writing", fname);
-		return NULL;
-	}
-
-	student_id_t *p = malloc(400 * sizeof(student_id_t));
-	size_t i = 0;
-	while (i < 400 && fscanf(f, "%s%lf", p[i].neptun, &p[i].id) == 2)
-		i++;
-	*n = i;
-	fclose(f);
-	return realloc(p, *n * sizeof(student_id_t));
-}
-
-/**
- * @brief Convert Neptun code to prog1 id
- * 
- * @param neptun the neptun code (null-terminated)
- * @param ids array of code-id pairs
- * @param n number of array elements
- * @return double prog1_id. 0.0 is returned if not found 
- */
-double neptun2id(char const *neptun, student_id_t ids[], size_t n)
-{
-	for (size_t i = 0; i < n; i++)
-		if (strcmp(ids[i].neptun, neptun) == 0)
-			return ids[i].id;
-	return 0.0;
-}
-
-enum
-{
-	BUFSIZE = 4096
-};
-
-/**
- * @brief 
+ * @brief split the json syntax tree into separate C files
  * 
  * @param st json syntax tree 
  */
 void parse_and_split(syntax_tree st)
 {
-	// traverese tree children
+	// traverse tree children
 	for (syntax_tree *it = syntax_tree_first_child(st); it != NULL; it = syntax_tree_next_sibling(it))
 	{
 		syntax_tree c = *it;
 		/*
+		// only accepted solutions are considered
 		if (syntax_tree_get_field(c, "accepted")->type != syntax_true)
 			continue;
 		*/
 
+		// extract attributes from the node
 		char const *student_id = syntax_tree_get_field(c, "student_id")->data;
 		char const *time = syntax_tree_get_field(c, "time")->data;
 		char const *solution = syntax_tree_get_field(c, "solution")->data;
 
+		// generate C file name from student id
 		char fname[10];
 		sprintf(fname, "%s.c", student_id);
 		FILE *fout = fopen(fname, "w");
@@ -102,7 +50,9 @@ void parse_and_split(syntax_tree st)
 			fprintf(stderr, "Could not create file %s\n", fname);
 			continue;
 		}
+		// print solution time into file
 		fprintf(fout, "// Solution submitted by %s at %s\n", student_id, time);
+		// write solution into solution file with escaping
 		char const *content = solution;
 		while (*content != '\0')
 		{
@@ -138,6 +88,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Could not open input file %s\n", fname);
 		return 1;
 	}
+
+	// parse json in two steps: (1) token list (2) syntax tree
 	token_list tl = token_list_read_from_file(fin);
 	fclose(fin);
 	
@@ -145,6 +97,7 @@ int main(int argc, char *argv[])
 	syntax_tree st = parse_json(tl, &end);
 	token_list_delete(tl);
 
+	// split the syntax tree into separate C files
 	parse_and_split(st);
 	syntax_tree_delete(st);
 
