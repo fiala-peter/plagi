@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
 		char *color;
 		int percent;
 		int cnt = sscanf(linebuf, "%s consists for %d %% of %s material", from, &percent, to);
-		int ifrom = strmod(from);
-		int ito = strmod(to);
+		// int ifrom = strmod(from);
+		// int ito = strmod(to);
 		// if (percent > 50)
 		// {
 		// 	list[ifrom]++;
